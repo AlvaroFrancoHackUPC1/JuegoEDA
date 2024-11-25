@@ -80,10 +80,18 @@ struct PLAYER_NAME : public Player {
    * Play method, invoked once per each round.
    */
   virtual void play() {
-    if (round() % 2 == 0 and rounds_spell_resting_ghost() == 0) {
+    if (round() % 2 == 0 and round() > 50) {
       int ghostid = ghost(me());
-      vector<int> res = encantamiento(spell_ingredients());
-      spell(ghostid, res);
+      Unit ghost = unit(ghostid); 
+      if (ghost.rounds_pending == 0) {
+        vector<int> res = encantamiento(spell_ingredients());
+        for(int i = 0; i < res.size(); ++i) cerr << spell_ingredients()[i];
+        cerr << endl;
+        for(int i = 0; i < res.size(); ++i) cerr << res[i];
+        cerr << endl;
+        exit(0);
+        spell(ghostid, res);
+      }
     }
     vector<int> wids = wizards(me());
     for (int i = 0; i < int(wids.size()); ++i) {
