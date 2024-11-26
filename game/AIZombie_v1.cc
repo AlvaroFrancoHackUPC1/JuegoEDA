@@ -18,6 +18,105 @@ struct PLAYER_NAME : public Player {
    */
   const vector<Dir> dirs = {Up, Down, Left, Right};
 
+  bool BFS(int &i, int &j, vector<vector<bool>> casVistas, queue<pair<int,int>> pendientes) {
+    pendientes.push(pair(i,j));
+    while(!pendientes.size() == 0) {
+      //Futuras posibles posiciones
+      pair<int,int> pos = pendientes.front();
+      i = pos.first;
+      j = pos.second;
+      pendientes.pop();
+      if (pos_ok(i+1,j) && !casVistas[i+1][j] && cell(i+1,j).type != Wall) {
+        pendientes.push(pair(i+1,j));
+        casVistas[i+1][j] = true;
+      }
+      if (pos_ok(i-1,j) && !casVistas[i-1][j] && cell(i-1,j).type != Wall) {
+        pendientes.push(pair(i-1,j));
+        casVistas[i-1][j] = true;
+      }
+      if (pos_ok(i,j+1) && !casVistas[i][j+1] && cell(i,j+1).type != Wall) {
+        pendientes.push(pair(i,j+1));
+        casVistas[i][j+1] = true;
+      }
+      if (pos_ok(i,j-1) && !casVistas[i][j-1] && cell(i,j-1).type != Wall) {
+        pendientes.push(pair(i,j-1));
+        casVistas[i][j-1] = true;
+      }
+      Cell act = cell(i,j);
+      if (act.book) return true;
+      casVistas[i][j] = true;
+    }
+    return false;
+  }
+
+  /**
+   * Play method, invoked once per each round.
+   */
+  virtual void play() {
+    vector<int> wids = wizards(me());
+    Pos posV = pos_voldemort();
+    int posVi = posV.i;
+    int posVj = posV.j;
+    for (int i = 0; i < int(wids.size()); ++i) {
+      Unit wiz = unit(wids[i]);
+      //Huir
+      if (abs(posVi - wiz.pos.i) <= 5 && abs(posVj - wiz.pos.j) <= 5) {
+        if (abs(posVi - wiz.pos.i) > abs(posVj - wiz.pos.j)) {
+          if (posVi > wiz.pos.i && pos_ok(wiz.pos.i - 1, wiz.pos.j) && cell(wiz.pos.i - 1, wiz.pos.j).type != Wall) move(wids[i], Up);
+          else if (posVi < wiz.pos.i && pos_ok(wiz.pos.i + 1, wiz.pos.j) && cell(wiz.pos.i + 1, wiz.pos.j).type != Wall) move(wids[i], Down);
+        } else {
+          if (posVj > wiz.pos.j && pos_ok(wiz.pos.i, wiz.pos.j - 1) && cell(wiz.pos.i, wiz.pos.j - 1).type != Wall) move(wids[i], Left);
+          else if (posVj < wiz.pos.j && pos_ok(wiz.pos.i, wiz.pos.j + 1) && cell(wiz.pos.i, wiz.pos.j + 1).type != Wall) move(wids[i], Right);
+        }
+      }
+
+      //BFS
+      int lPosi = wiz.pos.i, lPosj = wiz.pos.j;
+      vector<vector<bool>> casVistas(board_rows(), vector<bool>(board_cols(), false));
+      bool camino = BFS(lPosi, lPosj, casVistas, queue<pair<int,int>>());
+
+      if (camino) {
+        if (abs(lPosi - wiz.pos.i) > abs(lPosj - wiz.pos.j)) {
+          if (lPosi > wiz.pos.i && cell(wiz.pos.i+1, wiz.pos.j).type != Wall) move(wids[i], Down);
+          else if (lPosi < wiz.pos.i && cell(wiz.pos.i-1, wiz.pos.j).type != Wall) move(wids[i], Up);
+          {
+            if (random(0,1) == 0) move(wids[i], Right);
+            else move(wids[i], Left);
+          }
+        } 
+        else {
+          if (lPosj > wiz.pos.j && cell(wiz.pos.i, wiz.pos.j+1).type != Wall) move(wids[i], Right);
+          else if (lPosj < wiz.pos.j && cell(wiz.pos.i, wiz.pos.j-1).type != Wall) move(wids[i], Left);
+          else {
+            if (random(0,1) == 0) move(wids[i], Up);
+            else move(wids[i], Left);
+          }
+        }
+      }
+    }
+  }
+};
+
+
+
+
+
+//!Sección de codigo relegado, pero con posibilidad de ser util
+      /*
+      for (int j = 0; j < 2 and !libro; ++j) {
+        for (int k = 0; k < 2 and !libro; ++k) {
+          if (pos_ok(wiz.pos.i + k - 1, wiz.pos.j + j - 1)) {
+            Cell posible = cell(wiz.pos.i + k - 1, wiz.pos.j + j - 1);
+            if (posible.book) {
+              libro = true;
+              posrel.i = k - 1;
+              posrel.j = j - 1;
+            }
+          }
+        }
+      }
+      */
+  /*
   // Helper function to recursively find valid groups
   bool find_groups(vector<int>& ingredients, vector<vector<int>>& res, vector<int>& current, int idx, int target_sum, vector<bool>& used) {
     if (current.size() == 3) {
@@ -75,11 +174,8 @@ struct PLAYER_NAME : public Player {
   vector<int> encantamiento(vector<int> ingredients) {
     return agrupacion(ingredients);
   }
-
-  /**
-   * Play method, invoked once per each round.
-   */
-  virtual void play() {
+  */
+    /*
     if (round() % 2 == 0 and round() > 50) {
       int ghostid = ghost(me());
       Unit ghost = unit(ghostid); 
@@ -93,42 +189,9 @@ struct PLAYER_NAME : public Player {
         spell(ghostid, res);
       }
     }
-    vector<int> wids = wizards(me());
-    for (int i = 0; i < int(wids.size()); ++i) {
-      bool libro = false;
-      Unit wiz = unit(wids[i]);
-      Pos posrel(0, 0);
-      for (int j = 0; j < 2 and !libro; ++j) {
-        for (int k = 0; k < 2 and !libro; ++k) {
-          if (pos_ok(wiz.pos.i + k - 1, wiz.pos.j + j - 1)) {
-            Cell posible = cell(wiz.pos.i + k - 1, wiz.pos.j + j - 1);
-            if (posible.book) {
-              libro = true;
-              posrel.i = k - 1;
-              posrel.j = j - 1;
-            }
-          }
-        }
-      }
+    */
 
-      Dir mov = Up;  // Default
-      if (libro) {
-        if (posrel.i == 1)
-          mov = Down;
-        else if (posrel.j == 1)
-          mov = Right;
-        else if (posrel.j == -1)
-          mov = Left;
-        move(wids[i], mov);
-      } else {
-        Dir mov = dirs[random(0, dirs.size() - 1)];
-        Pos new_pos = unit(wids[i]).pos + mov;
-        if (pos_ok(new_pos) and cell(new_pos.i, new_pos.j).type != Wall)
-          move(wids[i], mov);
-      }
-    }
-  }
-};
+
 
 /**
  * Do not modify the following line.
