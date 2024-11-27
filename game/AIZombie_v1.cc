@@ -29,7 +29,7 @@ struct PLAYER_NAME : public Player {
   }
 
   //
-  Dir BFS(Pos &p) {
+  Dir BFS(Pos &p, bool l) {
     vector<vector<bool>> casVistas(board_rows(), vector<bool>(board_cols(), false));
     queue<pair<Pos,Dir>> pendientes;
     casVistas[p.i][p.j] = true;
@@ -46,7 +46,6 @@ struct PLAYER_NAME : public Player {
       //Futuras posibles posiciones
       pair<Pos,Dir> front = pendientes.front();
       p = front.first;
-
       for(int i = 0; i < int(wdirs.size()); ++i) {
         Pos pm = p+wdirs[i];
         if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
@@ -54,8 +53,7 @@ struct PLAYER_NAME : public Player {
           casVistas[pm.i][pm.j] = true;
         }
       }
-      if (cell(p).book) return front.second;
-
+      if (l && cell(p).book) return front.second;
       pendientes.pop();
     }
     
@@ -63,13 +61,19 @@ struct PLAYER_NAME : public Player {
   }
 
   void atacarcerca(Unit wiz, set<int> setWiz) {
-    int i = wiz.pos.i, j = wiz.pos.j;
+    Pos p = wiz.pos; 
     vector<int> idWizs = wizards(me());
     
-    if (celdaValida(i+1,j) && cell(i+1,j).id != -1 && (setWiz.find(cell(i+1,j).id) != setWiz.end())) move(wiz.id, Down);
-    if (celdaValida(i-1,j) && cell(i-1,j).id != -1 && setWiz.find(cell(i-1,j).id) != setWiz.end()) move(wiz.id, Up);
-    if (celdaValida(i,j+1) && cell(i,j+1).id != -1 && setWiz.find(cell(i,j+1).id) != setWiz.end()) move(wiz.id, Right);
-    if (celdaValida(i,j-1) && cell(i,j-1).id != -1 && setWiz.find(cell(i,j-1).id) != setWiz.end()) move(wiz.id, Left);
+    for(int i = 0; i < int(wdirs.size()); ++i) {
+      if (celdaValida(p+wdirs[i]) && cell(p+wdirs[i]).id != -1) {
+        Unit enwiz = unit(cell(p+wdirs[i]).id);
+        if (setWiz.find(enwiz.id) != setWiz.end() || enwiz.is_in_conversion_process()) {
+          move(wiz.id, wdirs[i]);
+          //cerr << "soy: " << wiz.id  << " estoy: " << p << " ataco: " << p+wdirs[i] << endl;
+          return;
+        }
+      }
+    }
   }
 
   /**
@@ -101,11 +105,8 @@ struct PLAYER_NAME : public Player {
       //BFS
       Pos lPos = wiz.pos;
       Dir mov = Up;
-      bool camino = true;
-
-      if (camino) {
-        move(wids[i], BFS(lPos));
-      }
+      move(wids[i], BFS(lPos, true));
+      
     }
   }
 };
