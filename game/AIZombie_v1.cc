@@ -16,37 +16,60 @@ struct PLAYER_NAME : public Player {
   /**
    * Types and attributes for your player can be defined here.
    */
-  const vector<Dir> dirs = {Up, Down, Left, Right};
+  //Cosas auxiliares
+  const vector<Dir> wdirs = {Up, Down, Left, Right};
 
-  bool BFS(int &i, int &j, vector<vector<bool>> casVistas, queue<pair<int,int>> pendientes) {
-    pendientes.push(pair(i,j));
-    while(!pendientes.size() == 0) {
-      //Futuras posibles posiciones
-      pair<int,int> pos = pendientes.front();
-      i = pos.first;
-      j = pos.second;
-      pendientes.pop();
-      if (pos_ok(i+1,j) && !casVistas[i+1][j] && cell(i+1,j).type != Wall) {
-        pendientes.push(pair(i+1,j));
-        casVistas[i+1][j] = true;
-      }
-      if (pos_ok(i-1,j) && !casVistas[i-1][j] && cell(i-1,j).type != Wall) {
-        pendientes.push(pair(i-1,j));
-        casVistas[i-1][j] = true;
-      }
-      if (pos_ok(i,j+1) && !casVistas[i][j+1] && cell(i,j+1).type != Wall) {
-        pendientes.push(pair(i,j+1));
-        casVistas[i][j+1] = true;
-      }
-      if (pos_ok(i,j-1) && !casVistas[i][j-1] && cell(i,j-1).type != Wall) {
-        pendientes.push(pair(i,j-1));
-        casVistas[i][j-1] = true;
-      }
-      Cell act = cell(i,j);
-      if (act.book) return true;
-      casVistas[i][j] = true;
-    }
+  bool celdaValida(int i, int j) {
+    if (pos_ok(i,j) && cell(i,j).type != Wall) return true;
     return false;
+  }
+  bool celdaValida(Pos p) {
+    if (pos_ok(p) && cell(p).type != Wall) return true;
+    return false;
+  }
+
+  //
+  Dir BFS(Pos &p) {
+    vector<vector<bool>> casVistas(board_rows(), vector<bool>(board_cols(), false));
+    queue<pair<Pos,Dir>> pendientes;
+    casVistas[p.i][p.j] = true;
+
+    for(int i = 0; i < int(wdirs.size()); ++i) {
+      Pos pm = p+wdirs[i];
+      if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
+        pendientes.push(pair(pm, wdirs[i]));
+        casVistas[pm.i][pm.j] = true;
+      }
+    }
+
+    while(!pendientes.empty()) {
+      //Futuras posibles posiciones
+      pair<Pos,Dir> front = pendientes.front();
+      p = front.first;
+
+      for(int i = 0; i < int(wdirs.size()); ++i) {
+        Pos pm = p+wdirs[i];
+        if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
+          pendientes.push(pair(pm, front.second));
+          casVistas[pm.i][pm.j] = true;
+        }
+      }
+      if (cell(p).book) return front.second;
+
+      pendientes.pop();
+    }
+    
+    return Up; // Placeholder return value
+  }
+
+  void atacarcerca(Unit wiz, set<int> setWiz) {
+    int i = wiz.pos.i, j = wiz.pos.j;
+    vector<int> idWizs = wizards(me());
+    
+    if (celdaValida(i+1,j) && cell(i+1,j).id != -1 && (setWiz.find(cell(i+1,j).id) != setWiz.end())) move(wiz.id, Down);
+    if (celdaValida(i-1,j) && cell(i-1,j).id != -1 && setWiz.find(cell(i-1,j).id) != setWiz.end()) move(wiz.id, Up);
+    if (celdaValida(i,j+1) && cell(i,j+1).id != -1 && setWiz.find(cell(i,j+1).id) != setWiz.end()) move(wiz.id, Right);
+    if (celdaValida(i,j-1) && cell(i,j-1).id != -1 && setWiz.find(cell(i,j-1).id) != setWiz.end()) move(wiz.id, Left);
   }
 
   /**
@@ -62,137 +85,82 @@ struct PLAYER_NAME : public Player {
       //Huir
       if (abs(posVi - wiz.pos.i) <= 5 && abs(posVj - wiz.pos.j) <= 5) {
         if (abs(posVi - wiz.pos.i) > abs(posVj - wiz.pos.j)) {
-          if (posVi > wiz.pos.i && pos_ok(wiz.pos.i - 1, wiz.pos.j) && cell(wiz.pos.i - 1, wiz.pos.j).type != Wall) move(wids[i], Up);
-          else if (posVi < wiz.pos.i && pos_ok(wiz.pos.i + 1, wiz.pos.j) && cell(wiz.pos.i + 1, wiz.pos.j).type != Wall) move(wids[i], Down);
+          if (posVi > wiz.pos.i && celdaValida(wiz.pos.i - 1, wiz.pos.j)) move(wids[i], Up);
+          else if (posVi < wiz.pos.i && celdaValida(wiz.pos.i + 1, wiz.pos.j)) move(wids[i], Down);
         } else {
-          if (posVj > wiz.pos.j && pos_ok(wiz.pos.i, wiz.pos.j - 1) && cell(wiz.pos.i, wiz.pos.j - 1).type != Wall) move(wids[i], Left);
-          else if (posVj < wiz.pos.j && pos_ok(wiz.pos.i, wiz.pos.j + 1) && cell(wiz.pos.i, wiz.pos.j + 1).type != Wall) move(wids[i], Right);
+          if (posVj > wiz.pos.j && celdaValida(wiz.pos.i, wiz.pos.j - 1)) move(wids[i], Left);
+          else if (posVj < wiz.pos.j && celdaValida(wiz.pos.i, wiz.pos.j + 1)) move(wids[i], Right);
         }
       }
 
+      //Atacar si esta cerca
+      set<int> setWiz;
+      for(int k = 0; k < int(wids.size()); ++k) setWiz.insert(wids[i]);
+      atacarcerca(wiz, setWiz);
+
       //BFS
-      int lPosi = wiz.pos.i, lPosj = wiz.pos.j;
-      vector<vector<bool>> casVistas(board_rows(), vector<bool>(board_cols(), false));
-      bool camino = BFS(lPosi, lPosj, casVistas, queue<pair<int,int>>());
+      Pos lPos = wiz.pos;
+      Dir mov = Up;
+      bool camino = true;
 
       if (camino) {
-        if (abs(lPosi - wiz.pos.i) > abs(lPosj - wiz.pos.j)) {
-          if (lPosi > wiz.pos.i && cell(wiz.pos.i+1, wiz.pos.j).type != Wall) move(wids[i], Down);
-          else if (lPosi < wiz.pos.i && cell(wiz.pos.i-1, wiz.pos.j).type != Wall) move(wids[i], Up);
-          {
-            if (random(0,1) == 0) move(wids[i], Right);
-            else move(wids[i], Left);
-          }
-        } 
-        else {
-          if (lPosj > wiz.pos.j && cell(wiz.pos.i, wiz.pos.j+1).type != Wall) move(wids[i], Right);
-          else if (lPosj < wiz.pos.j && cell(wiz.pos.i, wiz.pos.j-1).type != Wall) move(wids[i], Left);
-          else {
-            if (random(0,1) == 0) move(wids[i], Up);
-            else move(wids[i], Left);
-          }
-        }
+        move(wids[i], BFS(lPos));
       }
     }
   }
 };
 
-
-
-
-
-//!Sección de codigo relegado, pero con posibilidad de ser util
-      /*
-      for (int j = 0; j < 2 and !libro; ++j) {
-        for (int k = 0; k < 2 and !libro; ++k) {
-          if (pos_ok(wiz.pos.i + k - 1, wiz.pos.j + j - 1)) {
-            Cell posible = cell(wiz.pos.i + k - 1, wiz.pos.j + j - 1);
-            if (posible.book) {
-              libro = true;
-              posrel.i = k - 1;
-              posrel.j = j - 1;
-            }
-          }
-        }
-      }
-      */
-  /*
-  // Helper function to recursively find valid groups
-  bool find_groups(vector<int>& ingredients, vector<vector<int>>& res, vector<int>& current, int idx, int target_sum, vector<bool>& used) {
-    if (current.size() == 3) {
-      int sum = 0;
-      for (int val : current) sum += val;
-      if (sum == target_sum) {
-        res.push_back(current);
-        return true;
-      }
-      return false;
+/*
+  bool BFS(Pos &p, Dir mov) {
+    vector<vector<bool>> casVistas(board_rows(), vector<bool>(board_cols(), false));
+    queue<pair<Pos,Dir>> pendientes;
+    if (celdaValida(p.i+1, p.j) && !casVistas[p.i+1][p.j]) {
+      pendientes.push(pair(p+Down, Down));
+      casVistas[p.i+1][p.j] = true;
     }
-    for (int i = idx; i < ingredients.size(); ++i) {
-      if (!used[i]) {
-        used[i] = true;
-        current.push_back(ingredients[i]);
-        if (find_groups(ingredients, res, current, i + 1, target_sum, used)) return true;
-        current.pop_back();
-        used[i] = false;
+    if (celdaValida(p.i-1, p.j) && !casVistas[p.i-1][p.j]) {
+      pendientes.push(pair(p+Up, Up));
+      casVistas[p.i-1][p.j] = true;
+    }
+    if (celdaValida(p.i, p.j+1) && !casVistas[p.i][p.j+1]) {
+      pendientes.push(pair(p+Right, Right));
+      casVistas[p.i][p.j+1] = true;
+    }
+    if (celdaValida(p.i, p.j-1) && !casVistas[p.i][p.j-1]) {
+      pendientes.push(pair(p+Left, Left));
+      casVistas[p.i][p.j-1] = true;
+    }
+    while(!pendientes.size() == 0) {
+      //Futuras posibles posiciones
+      pair<Pos,Dir> front = pendientes.front();
+      p = front.first;
+      mov = front.second;
+
+      if (celdaValida(p.i+1, p.j) && !casVistas[p.i+1][p.j]) {
+        pendientes.push(pair(p+Down, mov));
+        casVistas[p.i+1][p.j] = true;
       }
+      if (celdaValida(p.i-1, p.j) && !casVistas[p.i-1][p.j]) {
+        pendientes.push(pair(p+Up, mov));
+        casVistas[p.i-1][p.j] = true;
+      }
+      if (celdaValida(p.i, p.j+1) && !casVistas[p.i][p.j+1]) {
+        pendientes.push(pair(p+Right, mov));
+        casVistas[p.i][p.j+1] = true;
+      }
+      if (celdaValida(p.i, p.j-1) && !casVistas[p.i][p.j-1]) {
+        pendientes.push(pair(p+Left, mov));
+        casVistas[p.i][p.j-1] = true;
+      }
+      //cerr << p.i << ' ' << p.j << endl;
+      //cerr << "mov: " << mov << endl;
+      Cell act = cell(p.i, p.j);
+      if (act.book) return true;
+      pendientes.pop();
     }
     return false;
   }
-
-  vector<int> agrupacion(vector<int>& ingredients) {
-    vector<int> res(15, -1);
-    int total_sum = 0;
-    for (int i = 0; i < int(ingredients.size()); ++i) total_sum += ingredients[i];
-    int target_sum = total_sum / 5;
-
-    vector<vector<int>> grupos;
-    vector<bool> used(ingredients.size(), false);
-    for (int i = 0; i < 5; ++i) {
-      vector<int> current;
-      if (!find_groups(ingredients, grupos, current, 0, target_sum, used)) {
-        return res; // Return empty result if no valid group found
-      }
-    }
-
-    // Assign group indices to result vector
-    for (int i = 0; i < grupos.size(); ++i) {
-      for (int j = 0; j < grupos[i].size(); ++j) {
-        int val = grupos[i][j];
-        for (int k = 0; k < ingredients.size(); ++k) {
-          if (ingredients[k] == val) {
-            res[k] = i;
-            ingredients[k] = -1; // Mark as used
-            break;
-          }
-        }
-      }
-    }
-    return res;
-  }
-
-  vector<int> encantamiento(vector<int> ingredients) {
-    return agrupacion(ingredients);
-  }
-  */
-    /*
-    if (round() % 2 == 0 and round() > 50) {
-      int ghostid = ghost(me());
-      Unit ghost = unit(ghostid); 
-      if (ghost.rounds_pending == 0) {
-        vector<int> res = encantamiento(spell_ingredients());
-        for(int i = 0; i < res.size(); ++i) cerr << spell_ingredients()[i];
-        cerr << endl;
-        for(int i = 0; i < res.size(); ++i) cerr << res[i];
-        cerr << endl;
-        exit(0);
-        spell(ghostid, res);
-      }
-    }
-    */
-
-
-
+*/
 /**
  * Do not modify the following line.
  */

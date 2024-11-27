@@ -34,7 +34,10 @@ PLAYERS_OBJ = $(patsubst %.cc, %.o, $(PLAYERS_SRC)) $(EXTRA_OBJ) $(DUMMY_OBJ)
 
 OBJ = Structs.o Settings.o State.o Info.o Random.o Board.o Action.o Player.o Registry.o Utils.o 
 
-all: Game
+all: AIDummy.linux Game
+
+AIDummy.linux: AIDummy.o.Linux64
+	cp AIDummy.o.Linux64 AIDummy.o
 
 clean:
 	rm -rf Game  *.o *.exe Makefile.deps
