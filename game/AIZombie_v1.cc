@@ -18,6 +18,7 @@ struct PLAYER_NAME : public Player {
    */
   //Cosas auxiliares
   const vector<Dir> wdirs = {Up, Down, Left, Right};
+  set<int> setWiz;
 
   bool celdaValida(int i, int j) {
     if (pos_ok(i,j) && cell(i,j).type != Wall) return true;
@@ -29,7 +30,7 @@ struct PLAYER_NAME : public Player {
   }
 
   //
-  Dir BFS(Pos &p, bool l) {
+  Dir BFS(Pos &p, bool Vol) {
     vector<vector<bool>> casVistas(board_rows(), vector<bool>(board_cols(), false));
     queue<pair<Pos,Dir>> pendientes;
     casVistas[p.i][p.j] = true;
@@ -53,21 +54,22 @@ struct PLAYER_NAME : public Player {
           casVistas[pm.i][pm.j] = true;
         }
       }
-      if (l && cell(p).book) return front.second;
+      if (!Vol && cell(p).book) return front.second;
+      else if (Vol && cell(p).id != -1 && setWiz.find(cell(p).id) == setWiz.end()) return front.second;
       pendientes.pop();
     }
     
     return Up; // Placeholder return value
   }
 
-  void atacarcerca(Unit wiz, set<int> setWiz) {
+  void atacarcerca(Unit wiz) {
     Pos p = wiz.pos; 
     vector<int> idWizs = wizards(me());
     
     for(int i = 0; i < int(wdirs.size()); ++i) {
       if (celdaValida(p+wdirs[i]) && cell(p+wdirs[i]).id != -1) {
-        Unit enwiz = unit(cell(p+wdirs[i]).id);
-        if (setWiz.find(enwiz.id) != setWiz.end() || enwiz.is_in_conversion_process()) {
+        Unit pwiz = unit(cell(p+wdirs[i]).id);
+        if (setWiz.find(pwiz.id) == setWiz.end() || pwiz.is_in_conversion_process()) {
           move(wiz.id, wdirs[i]);
           //cerr << "soy: " << wiz.id  << " estoy: " << p << " ataco: " << p+wdirs[i] << endl;
           return;
@@ -98,14 +100,13 @@ struct PLAYER_NAME : public Player {
       }
 
       //Atacar si esta cerca
-      set<int> setWiz;
       for(int k = 0; k < int(wids.size()); ++k) setWiz.insert(wids[i]);
-      atacarcerca(wiz, setWiz);
+      atacarcerca(wiz);
 
       //BFS
       Pos lPos = wiz.pos;
       Dir mov = Up;
-      move(wids[i], BFS(lPos, true));
+      move(wids[i], BFS(lPos, false));
       
     }
   }
