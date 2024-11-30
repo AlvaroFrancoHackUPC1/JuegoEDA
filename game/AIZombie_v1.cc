@@ -29,37 +29,54 @@ struct PLAYER_NAME : public Player {
     return false;
   }
 
-  //
-  Dir BFS(Pos &p, bool Vol) {
-    vector<vector<bool>> casVistas(board_rows(), vector<bool>(board_cols(), false));
-    queue<pair<Pos,Dir>> pendientes;
-    casVistas[p.i][p.j] = true;
 
+  //
+  struct LibWiz {
+    int dist; //Distancia en recorrido entre wizard y libro
+    Pos p; //Posicion del libro
+    Dir mov; //Proximo movimiento del wizard hasta el libro
+    int id; //id Wizard
+  };
+
+  map<Pos, LibWiz> LPosD; 
+
+  void BFS(Pos &p, int wiz_id) {
+    vector<vector<bool>> casVistas(board_rows(), vector<bool>(board_cols(), false));
+    queue<LibWiz> pendientes;
+    casVistas[p.i][p.j] = true;
     for(int i = 0; i < int(wdirs.size()); ++i) {
       Pos pm = p+wdirs[i];
       if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
-        pendientes.push(pair(pm, wdirs[i]));
+        pendientes.push(LibWiz{1, pm, wdirs[i], wiz_id});
         casVistas[pm.i][pm.j] = true;
       }
     }
-
+    LibWiz front = {0, p, Up, wiz_id};
     while(!pendientes.empty()) {
       //Futuras posibles posiciones
-      pair<Pos,Dir> front = pendientes.front();
-      p = front.first;
+      front = pendientes.front();
+      p = front.p;
+
       for(int i = 0; i < int(wdirs.size()); ++i) {
         Pos pm = p+wdirs[i];
         if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
-          pendientes.push(pair(pm, front.second));
+          pendientes.push(LibWiz{front.dist + 1, pm, front.mov, wiz_id});
           casVistas[pm.i][pm.j] = true;
         }
       }
-      if (!Vol && cell(p).book) return front.second;
-      else if (Vol && cell(p).id != -1 && setWiz.find(cell(p).id) == setWiz.end()) return front.second;
+      if (cell(p).book) {
+        if (LPosD.find(p) == LPosD.end() || LPosD[p].dist > front.dist) {
+          LibWiz ant = {0, Pos(), Up, 0};
+          if (LPosD.find(p) != LPosD.end()) ant = LPosD[p];
+          LPosD[p] = front;
+          if (ant.dist > front.dist) { 
+            Pos antPos = unit(ant.id).pos;
+            BFS(antPos, ant.id);
+          } 
+        }
+      }
       pendientes.pop();
     }
-    
-    return Up; // Placeholder return value
   }
 
   void atacarcerca(Unit wiz) {
@@ -86,6 +103,8 @@ struct PLAYER_NAME : public Player {
     Pos posV = pos_voldemort();
     int posVi = posV.i;
     int posVj = posV.j;
+    //Inicializa un set con todos
+    for(int k = 0; k < int(wids.size()); ++k) setWiz.insert(wids[k]);
     for (int i = 0; i < int(wids.size()); ++i) {
       Unit wiz = unit(wids[i]);
       //Huir
@@ -100,69 +119,19 @@ struct PLAYER_NAME : public Player {
       }
 
       //Atacar si esta cerca
-      for(int k = 0; k < int(wids.size()); ++k) setWiz.insert(wids[i]);
       atacarcerca(wiz);
 
       //BFS
-      Pos lPos = wiz.pos;
-      Dir mov = Up;
-      move(wids[i], BFS(lPos, false));
-      
+      BFS(wiz.pos, wiz.id);
+    }
+    map<Pos,LibWiz>::iterator it = LPosD.begin();
+    while(it != LPosD.end()) {
+      cerr << it->second.id << ' ' <<  it->second.dist << endl;
+      move(it->second.id, it->second.mov);
+      ++it;
     }
   }
 };
-
-/*
-  bool BFS(Pos &p, Dir mov) {
-    vector<vector<bool>> casVistas(board_rows(), vector<bool>(board_cols(), false));
-    queue<pair<Pos,Dir>> pendientes;
-    if (celdaValida(p.i+1, p.j) && !casVistas[p.i+1][p.j]) {
-      pendientes.push(pair(p+Down, Down));
-      casVistas[p.i+1][p.j] = true;
-    }
-    if (celdaValida(p.i-1, p.j) && !casVistas[p.i-1][p.j]) {
-      pendientes.push(pair(p+Up, Up));
-      casVistas[p.i-1][p.j] = true;
-    }
-    if (celdaValida(p.i, p.j+1) && !casVistas[p.i][p.j+1]) {
-      pendientes.push(pair(p+Right, Right));
-      casVistas[p.i][p.j+1] = true;
-    }
-    if (celdaValida(p.i, p.j-1) && !casVistas[p.i][p.j-1]) {
-      pendientes.push(pair(p+Left, Left));
-      casVistas[p.i][p.j-1] = true;
-    }
-    while(!pendientes.size() == 0) {
-      //Futuras posibles posiciones
-      pair<Pos,Dir> front = pendientes.front();
-      p = front.first;
-      mov = front.second;
-
-      if (celdaValida(p.i+1, p.j) && !casVistas[p.i+1][p.j]) {
-        pendientes.push(pair(p+Down, mov));
-        casVistas[p.i+1][p.j] = true;
-      }
-      if (celdaValida(p.i-1, p.j) && !casVistas[p.i-1][p.j]) {
-        pendientes.push(pair(p+Up, mov));
-        casVistas[p.i-1][p.j] = true;
-      }
-      if (celdaValida(p.i, p.j+1) && !casVistas[p.i][p.j+1]) {
-        pendientes.push(pair(p+Right, mov));
-        casVistas[p.i][p.j+1] = true;
-      }
-      if (celdaValida(p.i, p.j-1) && !casVistas[p.i][p.j-1]) {
-        pendientes.push(pair(p+Left, mov));
-        casVistas[p.i][p.j-1] = true;
-      }
-      //cerr << p.i << ' ' << p.j << endl;
-      //cerr << "mov: " << mov << endl;
-      Cell act = cell(p.i, p.j);
-      if (act.book) return true;
-      pendientes.pop();
-    }
-    return false;
-  }
-*/
 /**
  * Do not modify the following line.
  */
