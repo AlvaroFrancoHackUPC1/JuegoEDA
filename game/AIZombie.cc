@@ -4,7 +4,7 @@
  * Write the name of your player and save this file
  * with the same name and .cc extension.
  */
-#define PLAYER_NAME Zombie_v2
+#define PLAYER_NAME Zombie_v3
 
 struct PLAYER_NAME : public Player {
   /**
@@ -16,12 +16,13 @@ struct PLAYER_NAME : public Player {
   /**
    * Types and attributes for your player can be defined here.
    */
-  //Cosas auxiliares
+  // Cosas auxiliares
   const vector<Dir> wdirs = {Up, Down, Left, Right};
+  const vector<Dir> fdirs = {DR, RU, UL, LD, Down, Right, Up, Left};
   set<int> setWiz;
 
   bool celdaValida(int i, int j) {
-    if (pos_ok(i,j) && cell(i,j).type != Wall) return true;
+    if (pos_ok(i, j) && cell(i, j).type != Wall) return true;
     return false;
   }
   bool celdaValida(Pos p) {
@@ -29,37 +30,76 @@ struct PLAYER_NAME : public Player {
     return false;
   }
 
+  // Funciones uitiles
+  vector<int> asignar_grupos() {
+    vector<int> ingredientes = spell_ingredients();
+    int n = ingredientes.size(); // Debería ser 15
+    int num_grupos = 5;
+    int tam_grupo = 3;
 
-  //
+    vector<int> asignaciones(n, -1);
+    vector<int> sumas_grupos(num_grupos, 0);
+    vector<int> conteos_grupos(num_grupos, 0);
+
+    // Calcular la suma objetivo
+    int suma_total = 0;
+    for (int i = 0; i < n; ++i) {
+      suma_total += ingredientes[i];
+    }
+    int suma_objetivo = suma_total / num_grupos;
+
+    vector<pair<int, int>> ingredientes_ordenados;
+    for (int i = 0; i < n; ++i) {
+      ingredientes_ordenados.push_back(make_pair(ingredientes[i], i));
+    }
+    sort(ingredientes_ordenados.rbegin(), ingredientes_ordenados.rend());
+
+    for (int i = 0; i < n; ++i) {
+      int valor = ingredientes_ordenados[i].first;
+      int indice = ingredientes_ordenados[i].second;
+      for (int g = 0; g < num_grupos; ++g) {
+        if (conteos_grupos[g] < tam_grupo && sumas_grupos[g] + valor <= suma_objetivo) {
+          asignaciones[indice] = g;
+          sumas_grupos[g] += valor;
+          conteos_grupos[g] += 1;
+          break; // Pasar al siguiente ingrediente
+        }
+      }
+    }
+    return asignaciones;
+  }
+
   struct LibWiz {
-    int dist; //Distancia en recorrido entre wizard y libro
-    Pos p; //Posicion del libro
-    Dir mov; //Proximo movimiento del wizard hasta el libro
-    int id; //id Wizard
+    int dist;  // Distancia en recorrido entre wizard y libro
+    Pos p;     // Posicion del libro
+    Dir mov;   // Proximo movimiento del wizard hasta el libro
+    int id;    // id Wizard
   };
 
-  map<Pos, LibWiz> LPosD; 
+  map<Pos, LibWiz> LPosD;
 
-  void BFS(int wiz_id, queue<int> &bfsqueue) {
+  void BFS(int wiz_id, queue<int>& bfsqueue, bool fantasma) {
     vector<vector<bool>> casVistas(board_rows(), vector<bool>(board_cols(), false));
     queue<LibWiz> pendientes;
     Pos p = unit(wiz_id).pos;
     casVistas[p.i][p.j] = true;
-    for(int i = 0; i < int(wdirs.size()); ++i) {
-      Pos pm = p+wdirs[i];
+    vector<Dir> movement = fantasma? fdirs : wdirs;
+
+    for (int i = 0; i < int(movement.size()); ++i) {
+      Pos pm = p + movement[i];
       if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
-        pendientes.push(LibWiz{1, pm, wdirs[i], wiz_id});
+        pendientes.push(LibWiz{1, pm, movement[i], wiz_id});
         casVistas[pm.i][pm.j] = true;
       }
     }
     LibWiz front = {0, p, Up, wiz_id};
-    while(!pendientes.empty()) {
-      //Futuras posibles posiciones
+    while (!pendientes.empty()) {
+      // Futuras posibles posiciones
       front = pendientes.front();
       p = front.p;
 
-      for(int i = 0; i < int(wdirs.size()); ++i) {
-        Pos pm = p+wdirs[i];
+      for (int i = 0; i < int(movement.size()); ++i) {
+        Pos pm = p + movement[i];
         if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
           pendientes.push(LibWiz{front.dist + 1, pm, front.mov, wiz_id});
           casVistas[pm.i][pm.j] = true;
@@ -77,15 +117,15 @@ struct PLAYER_NAME : public Player {
   }
 
   void atacarcerca(Unit wiz) {
-    Pos p = wiz.pos; 
+    Pos p = wiz.pos;
     vector<int> idWizs = wizards(me());
-    
-    for(int i = 0; i < int(wdirs.size()); ++i) {
-      if (celdaValida(p+wdirs[i]) && cell(p+wdirs[i]).id != -1) {
-        Unit pwiz = unit(cell(p+wdirs[i]).id);
+
+    for (int i = 0; i < int(wdirs.size()); ++i) {
+      if (celdaValida(p + wdirs[i]) && cell(p + wdirs[i]).id != -1) {
+        Unit pwiz = unit(cell(p + wdirs[i]).id);
         if (setWiz.find(pwiz.id) == setWiz.end() || pwiz.is_in_conversion_process()) {
           move(wiz.id, wdirs[i]);
-          //cerr << "soy: " << wiz.id  << " estoy: " << p << " ataco: " << p+wdirs[i] << endl;
+          // cerr << "soy: " << wiz.id  << " estoy: " << p << " ataco: " << p+wdirs[i] << endl;
           return;
         }
       }
@@ -102,38 +142,47 @@ struct PLAYER_NAME : public Player {
     int posVj = posV.j;
     LPosD.clear();
     queue<int> bfsqueue;
+    int ghostid = ghost(me());
+    bfsqueue.push(ghostid);
 
-    //Inicializa un set con todos
-    for(int k = 0; k < int(wids.size()); ++k) setWiz.insert(wids[k]);
+    // Inicializa un set con todos
+    for (int k = 0; k < int(wids.size()); ++k) setWiz.insert(wids[k]);
+    setWiz.insert(ghostid);  //meter al fantasma
+    if (round() > 50 && unit(ghostid).rounds_pending == 0) spell(ghostid, asignar_grupos());
 
     for (int i = 0; i < int(wids.size()); ++i) {
       Unit wiz = unit(wids[i]);
-      //Huir
+      // Huir
       if (abs(posVi - wiz.pos.i) <= 5 && abs(posVj - wiz.pos.j) <= 5) {
         if (abs(posVi - wiz.pos.i) > abs(posVj - wiz.pos.j)) {
-          if (posVi > wiz.pos.i && celdaValida(wiz.pos.i - 1, wiz.pos.j)) move(wids[i], Up);
-          else if (posVi < wiz.pos.i && celdaValida(wiz.pos.i + 1, wiz.pos.j)) move(wids[i], Down);
+          if (posVi > wiz.pos.i && celdaValida(wiz.pos.i - 1, wiz.pos.j))
+            move(wids[i], Up);
+          else if (posVi < wiz.pos.i && celdaValida(wiz.pos.i + 1, wiz.pos.j))
+            move(wids[i], Down);
         } else {
-          if (posVj > wiz.pos.j && celdaValida(wiz.pos.i, wiz.pos.j - 1)) move(wids[i], Left);
-          else if (posVj < wiz.pos.j && celdaValida(wiz.pos.i, wiz.pos.j + 1)) move(wids[i], Right);
+          if (posVj > wiz.pos.j && celdaValida(wiz.pos.i, wiz.pos.j - 1))
+            move(wids[i], Left);
+          else if (posVj < wiz.pos.j && celdaValida(wiz.pos.i, wiz.pos.j + 1))
+            move(wids[i], Right);
         }
       }
 
-      //Atacar si esta cerca
+      // Atacar si esta cerca
       atacarcerca(wiz);
-      
 
-      //BFS
+      // BFS
       bfsqueue.push(wiz.id);
-      while(!bfsqueue.empty()) {
-        BFS(bfsqueue.front(), bfsqueue);
-        int id = bfsqueue.front();
+      while (!bfsqueue.empty()) {
+        if (ghostid == bfsqueue.front()) BFS(bfsqueue.front(), bfsqueue, true);
+        BFS(bfsqueue.front(), bfsqueue, false);
         bfsqueue.pop();
-      } 
+      }
     }
-    map<Pos,LibWiz>::iterator it = LPosD.begin();
-    while(it != LPosD.end()) {
-      cerr << it->second.id << ' ' <<  it->second.dist << endl;
+
+
+    map<Pos, LibWiz>::iterator it = LPosD.begin();
+    while (it != LPosD.end()) {
+      //cerr << it->second.id << ' ' << it->second.dist << endl;
       move(it->second.id, it->second.mov);
       ++it;
     }

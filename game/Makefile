@@ -1,7 +1,8 @@
 DUMMY_OBJ = AIDummy.o
 
 # Add here any extra .o player files you want to link to the executable
-EXTRA_OBJ = 
+EXTRA_OBJ_DIR = extraobjs
+EXTRA_OBJ = $(wildcard $(EXTRA_OBJ_DIR)/*.o)
 
 # Configuration
 OPTIMIZE = 3 # Optimization level    (0 to 3)
@@ -24,14 +25,14 @@ endif
 CXXFLAGS = -std=c++17 -Wall -Wno-unused-variable -fPIC $(PROFILEFLAGS) $(DEBUGFLAGS) -O$(strip $(OPTIMIZE))
 LDFLAGS  = -std=c++11                            $(PROFILEFLAGS) $(DEBUGFLAGS) -O$(strip $(OPTIMIZE))
 
-
 # The following two lines will detect all your players (files matching "AI*.cc")
-
 PLAYERS_SRC = $(wildcard AI*.cc)
-PLAYERS_OBJ = $(patsubst %.cc, %.o, $(PLAYERS_SRC)) $(EXTRA_OBJ) $(DUMMY_OBJ)
+PLAYERS_OBJ = $(patsubst %.cc, %.o, $(PLAYERS_SRC)) $(DUMMY_OBJ)
+
+# Include EXTRA_OBJ explicitly in the list of objects
+ALL_PLAYERS_OBJ = $(PLAYERS_OBJ) $(EXTRA_OBJ)
 
 # Rules
-
 OBJ = Structs.o Settings.o State.o Info.o Random.o Board.o Action.o Player.o Registry.o Utils.o 
 
 all: AIDummy.linux Game
@@ -41,8 +42,9 @@ AIDummy.linux: AIDummy.o.Linux64
 
 clean:
 	rm -rf Game  *.o *.exe Makefile.deps
+	# No borra los objetos en extraobjs
 
-Game:  $(OBJ) Game.o Main.o $(PLAYERS_OBJ) 
+Game:  $(OBJ) Game.o Main.o $(ALL_PLAYERS_OBJ)
 	$(CXX) $^ -o $@ $(LDFLAGS)
 
 SecGame: $(OBJ) SecGame.o SecMain.o
