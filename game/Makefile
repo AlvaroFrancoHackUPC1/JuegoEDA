@@ -35,7 +35,10 @@ ALL_PLAYERS_OBJ = $(PLAYERS_OBJ) $(EXTRA_OBJ)
 # Rules
 OBJ = Structs.o Settings.o State.o Info.o Random.o Board.o Action.o Player.o Registry.o Utils.o 
 
-all: Game
+all: Game Ejecutar
+
+Ejecutar: Ejecutar.cc
+	g++ -o Ejecutar Ejecutar.cc
 
 clean:
 	rm -rf Game  *.o *.exe Makefile.deps
