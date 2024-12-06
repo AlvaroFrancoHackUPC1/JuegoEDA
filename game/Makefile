@@ -1,4 +1,4 @@
-DUMMY_OBJ = AIDummy.o
+DUMMY_OBJ = AIDummy.o.Linux64
 
 # Add here any extra .o player files you want to link to the executable
 EXTRA_OBJ_DIR = extraobjs
@@ -35,10 +35,7 @@ ALL_PLAYERS_OBJ = $(PLAYERS_OBJ) $(EXTRA_OBJ)
 # Rules
 OBJ = Structs.o Settings.o State.o Info.o Random.o Board.o Action.o Player.o Registry.o Utils.o 
 
-all: AIDummy.linux Game
-
-AIDummy.linux: AIDummy.o.Linux64
-	cp AIDummy.o.Linux64 AIDummy.o
+all: Game
 
 clean:
 	rm -rf Game  *.o *.exe Makefile.deps
