@@ -105,7 +105,10 @@ struct PLAYER_NAME : public Player {
           casVistas[pm.i][pm.j] = true;
         }
       }
-      if (cell(p).book) {
+      //! Revisar
+      if (cell(p).book || 
+      (cell(p).id != -1 && cell(p).owner == me() && unit(cell(p).id).is_in_conversion_process() && unit(cell(p).id).rounds_for_converting() > front.dist) ||
+       (magic_strength(me()) > 2*magic_strength(cell(p).owner) || (round() >= 100 && 2*magic_strength(me()) > magic_strength(cell(p).owner)) && cell(p).id != -1 && cell(p).owner != me()) ) {
         if (LPosD.find(p) == LPosD.end() || LPosD[p].dist > front.dist) {
           if (LPosD.find(p) != LPosD.end()) bfsqueue.push(LPosD[p].id);
           LPosD[p] = front;
@@ -115,6 +118,9 @@ struct PLAYER_NAME : public Player {
       pendientes.pop();
     }
   }
+
+    //( ), , , 
+
 
   void atacarcerca(Unit wiz) {
     Pos p = wiz.pos;
