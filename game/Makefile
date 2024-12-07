@@ -55,5 +55,3 @@ SecGame: $(OBJ) SecGame.o SecMain.o
 
 Makefile.deps: *.cc
 	$(CXX) $(CXXFLAGS) -MM *.cc > Makefile.deps
-
-include Makefile.deps

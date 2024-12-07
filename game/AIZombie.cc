@@ -108,7 +108,7 @@ struct PLAYER_NAME : public Player {
       //! Revisar
       if (cell(p).book || 
       (cell(p).id != -1 && cell(p).owner == me() && unit(cell(p).id).is_in_conversion_process() && unit(cell(p).id).rounds_for_converting() > front.dist) ||
-       (magic_strength(me()) > 2*magic_strength(cell(p).owner) || (round() >= 100 && 2*magic_strength(me()) > magic_strength(cell(p).owner)) && cell(p).id != -1 && cell(p).owner != me()) ) {
+      (cell(p).id != -1 && cell(p).owner != me() && (magic_strength(me()) > 2*magic_strength(cell(p).owner) || (round() >= 100 && 2*magic_strength(me()) > magic_strength(cell(p).owner)) ) ) ) {
         if (LPosD.find(p) == LPosD.end() || LPosD[p].dist > front.dist) {
           if (LPosD.find(p) != LPosD.end()) bfsqueue.push(LPosD[p].id);
           LPosD[p] = front;
