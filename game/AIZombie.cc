@@ -105,10 +105,9 @@ struct PLAYER_NAME : public Player {
           casVistas[pm.i][pm.j] = true;
         }
       }
-      //! Revisar
       if (cell(p).book || 
-      (cell(p).id != -1 && cell(p).owner == me() && unit(cell(p).id).is_in_conversion_process() && unit(cell(p).id).rounds_for_converting() > front.dist) ||
-      (cell(p).id != -1 && cell(p).owner != me() && (magic_strength(me()) > 2*magic_strength(cell(p).owner) || (round() >= 100 && 2*magic_strength(me()) > magic_strength(cell(p).owner)) ) ) ) {
+      (cell(p).id != -1 && cell(p).owner == me() && unit(cell(p).id).is_in_conversion_process() && unit(cell(p).id).rounds_for_converting() > front.dist && !fantasma) ||
+      (cell(p).id != -1 && cell(p).owner != me() && (magic_strength(me()) > 2*magic_strength(cell(p).owner) || (round() >= 100 && 2*magic_strength(me()) > magic_strength(cell(p).owner)) ) && !fantasma ) ) {
         if (LPosD.find(p) == LPosD.end() || LPosD[p].dist > front.dist) {
           if (LPosD.find(p) != LPosD.end()) bfsqueue.push(LPosD[p].id);
           LPosD[p] = front;
@@ -117,10 +116,46 @@ struct PLAYER_NAME : public Player {
       }
       pendientes.pop();
     }
+
+    cerr << "No he encontrado nada id:" << wiz_id << endl;
+    //Si ha llegado auí significa que no a encontrado a por que ir en ese caso que vaya a lo mas cercano;
+    // Pues hace lo mismo pero no comprueba si hay otro que va por lo mismo
+    // No me gusta como esta hecho pero bueno
+    p = unit(wiz_id).pos;
+    vector<vector<bool>> todofalse(board_rows(), vector<bool>(board_cols(), false));    
+    casVistas = todofalse;
+    casVistas[p.i][p.j] = true;
+
+    for (int i = 0; i < int(movement.size()); ++i) {
+      Pos pm = p + movement[i];
+      if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
+        pendientes.push(LibWiz{1, pm, movement[i], wiz_id});
+        casVistas[pm.i][pm.j] = true;
+      }
+    }
+
+    while (!pendientes.empty()) {
+      // Futuras posibles posiciones
+      front = pendientes.front();
+      p = front.p;
+
+      for (int i = 0; i < int(movement.size()); ++i) {
+        Pos pm = p + movement[i];
+        if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
+          pendientes.push(LibWiz{front.dist + 1, pm, front.mov, wiz_id});
+          casVistas[pm.i][pm.j] = true;
+        }
+      }
+      if (cell(p).book || 
+      (cell(p).id != -1 && cell(p).owner == me() && unit(cell(p).id).is_in_conversion_process() && unit(cell(p).id).rounds_for_converting() > front.dist && !fantasma) ||
+      (cell(p).id != -1 && cell(p).owner != me() && (magic_strength(me()) > 2*magic_strength(cell(p).owner) || (round() >= 100 && 2*magic_strength(me()) > magic_strength(cell(p).owner)) ) && !fantasma ) ) {
+          move(front.id, front.mov);
+          return;
+      }
+      pendientes.pop();
+    }
+    cerr << "No he encontrado nada ni con el simple id:" << wiz_id << endl;
   }
-
-    //( ), , , 
-
 
   void atacarcerca(Unit wiz) {
     Pos p = wiz.pos;
@@ -154,7 +189,8 @@ struct PLAYER_NAME : public Player {
     // Inicializa un set con todos
     for (int k = 0; k < int(wids.size()); ++k) setWiz.insert(wids[k]);
     setWiz.insert(ghostid);  //meter al fantasma
-    if (round() > 50 && unit(ghostid).rounds_pending == 0) spell(ghostid, asignar_grupos());
+    //Tirar hechizo
+    if (round() > 50 && unit(ghostid).rounds_pending == 0 && round() <= 150) spell(ghostid, asignar_grupos());
 
     for (int i = 0; i < int(wids.size()); ++i) {
       Unit wiz = unit(wids[i]);
