@@ -78,7 +78,9 @@ struct PLAYER_NAME : public Player {
 
   map<Pos, LibWiz> LPosD;
 
-  void BFS(int wiz_id, queue<int>& bfsqueue, bool fantasma) {
+  // Busca el libro/enemigo que de su equipo este mas cerca
+  // Si simple == true, va al mas cercano da igual que
+  void BFS(int wiz_id, queue<int>& bfsqueue, bool fantasma, bool simple) {
     vector<vector<bool>> casVistas(board_rows(), vector<bool>(board_cols(), false));
     queue<LibWiz> pendientes;
     Pos p = unit(wiz_id).pos;
@@ -108,6 +110,10 @@ struct PLAYER_NAME : public Player {
       if (cell(p).book || 
       (cell(p).id != -1 && cell(p).owner == me() && unit(cell(p).id).is_in_conversion_process() && unit(cell(p).id).rounds_for_converting() > front.dist && !fantasma) ||
       (cell(p).id != -1 && cell(p).owner != me() && (magic_strength(me()) > 2*magic_strength(cell(p).owner) || (round() >= 100 && 2*magic_strength(me()) > magic_strength(cell(p).owner)) ) && !fantasma ) ) {
+        if (simple) {
+          move(wiz_id, front.mov);
+          return;
+        }
         if (LPosD.find(p) == LPosD.end() || LPosD[p].dist > front.dist) {
           if (LPosD.find(p) != LPosD.end()) bfsqueue.push(LPosD[p].id);
           LPosD[p] = front;
@@ -117,44 +123,9 @@ struct PLAYER_NAME : public Player {
       pendientes.pop();
     }
 
-    cerr << "No he encontrado nada id:" << wiz_id << endl;
     //Si ha llegado auí significa que no a encontrado a por que ir en ese caso que vaya a lo mas cercano;
     // Pues hace lo mismo pero no comprueba si hay otro que va por lo mismo
-    // No me gusta como esta hecho pero bueno
-    p = unit(wiz_id).pos;
-    vector<vector<bool>> todofalse(board_rows(), vector<bool>(board_cols(), false));    
-    casVistas = todofalse;
-    casVistas[p.i][p.j] = true;
-
-    for (int i = 0; i < int(movement.size()); ++i) {
-      Pos pm = p + movement[i];
-      if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
-        pendientes.push(LibWiz{1, pm, movement[i], wiz_id});
-        casVistas[pm.i][pm.j] = true;
-      }
-    }
-
-    while (!pendientes.empty()) {
-      // Futuras posibles posiciones
-      front = pendientes.front();
-      p = front.p;
-
-      for (int i = 0; i < int(movement.size()); ++i) {
-        Pos pm = p + movement[i];
-        if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
-          pendientes.push(LibWiz{front.dist + 1, pm, front.mov, wiz_id});
-          casVistas[pm.i][pm.j] = true;
-        }
-      }
-      if (cell(p).book || 
-      (cell(p).id != -1 && cell(p).owner == me() && unit(cell(p).id).is_in_conversion_process() && unit(cell(p).id).rounds_for_converting() > front.dist && !fantasma) ||
-      (cell(p).id != -1 && cell(p).owner != me() && (magic_strength(me()) > 2*magic_strength(cell(p).owner) || (round() >= 100 && 2*magic_strength(me()) > magic_strength(cell(p).owner)) ) && !fantasma ) ) {
-          move(front.id, front.mov);
-          return;
-      }
-      pendientes.pop();
-    }
-    cerr << "No he encontrado nada ni con el simple id:" << wiz_id << endl;
+    BFS(wiz_id, bfsqueue, fantasma, true);
   }
 
   void atacarcerca(Unit wiz) {
@@ -201,7 +172,8 @@ struct PLAYER_NAME : public Player {
             move(wids[i], Up);
           else if (posVi < wiz.pos.i && celdaValida(wiz.pos.i + 1, wiz.pos.j))
             move(wids[i], Down);
-        } else {
+        } 
+        else {
           if (posVj > wiz.pos.j && celdaValida(wiz.pos.i, wiz.pos.j - 1))
             move(wids[i], Left);
           else if (posVj < wiz.pos.j && celdaValida(wiz.pos.i, wiz.pos.j + 1))
@@ -215,8 +187,8 @@ struct PLAYER_NAME : public Player {
       // BFS
       bfsqueue.push(wiz.id);
       while (!bfsqueue.empty()) {
-        if (ghostid == bfsqueue.front()) BFS(bfsqueue.front(), bfsqueue, true);
-        BFS(bfsqueue.front(), bfsqueue, false);
+        if (ghostid == bfsqueue.front()) BFS(bfsqueue.front(), bfsqueue, true, false);
+        BFS(bfsqueue.front(), bfsqueue, false, false);
         bfsqueue.pop();
       }
     }
