@@ -1998,3 +1998,84 @@ Partida numero: 1
 Score: 10532 5660 7032 4142
 Strength: 22950 8350 7800 6250
 
+
+Partida numero: 20
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 19
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 18
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 17
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 16
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 15
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 14
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 13
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 12
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 11
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 10
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 9
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 8
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 7
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 6
+Score: 4043 7032 3472 4013
+Strength: 7900 19400 9600 7350
+
+Partida numero: 5
+Score: 6652 5968 3502 4823
+Strength: 9500 9450 7950 7300
+
+Partida numero: 4
+Score: 7400 4013 3049 3365
+Strength: 12050 9350 6800 6000
+
+Partida numero: 3
+Score: 7036 6086 4092 3969
+Strength: 15000 10050 6700 6250
+
+Partida numero: 2
+Score: 4060 6298 3584 3688
+Strength: 10000 10600 8100 6000
+
+Partida numero: 1
+Score: 6392 3769 4503 4172
+Strength: 6600 7450 8200 6550
+
