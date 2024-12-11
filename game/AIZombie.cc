@@ -4,7 +4,7 @@
  * Write the name of your player and save this file
  * with the same name and .cc extension.
  */
-#define PLAYER_NAME Zombie_v5
+#define PLAYER_NAME Zombie_v6
 
 struct PLAYER_NAME : public Player {
   /**
@@ -166,7 +166,7 @@ struct PLAYER_NAME : public Player {
     for (int i = 0; i < int(wids.size()); ++i) {
       Unit wiz = unit(wids[i]);
       // Huir
-      if (abs(posVi - wiz.pos.i) <= 5 && abs(posVj - wiz.pos.j) <= 5) {
+      if (abs(posVi - wiz.pos.i) <= 2 && abs(posVj - wiz.pos.j) <= 2) {
         if (abs(posVi - wiz.pos.i) > abs(posVj - wiz.pos.j)) {
           if (posVi > wiz.pos.i && celdaValida(wiz.pos.i - 1, wiz.pos.j))
             move(wids[i], Up);
