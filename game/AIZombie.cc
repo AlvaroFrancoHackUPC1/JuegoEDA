@@ -30,6 +30,10 @@ struct PLAYER_NAME : public Player {
     return false;
   }
 
+  pair<int,int> distV(Pos p) {
+    return pair(abs(pos_voldemort().i - p.i), abs(pos_voldemort().j - p.j));
+  }
+
   // Funciones uitiles
   vector<int> asignar_grupos() {
     vector<int> ingredientes = spell_ingredients();
@@ -109,7 +113,10 @@ struct PLAYER_NAME : public Player {
       }
       if (cell(p).book || 
       (cell(p).id != -1 && cell(p).owner == me() && unit(cell(p).id).is_in_conversion_process() && unit(cell(p).id).rounds_for_converting() > front.dist && !fantasma) ||
-      (cell(p).id != -1 && cell(p).owner != me() && (magic_strength(me()) > 2*magic_strength(cell(p).owner) || (round() >= 100 && 2*magic_strength(me()) > magic_strength(cell(p).owner)) ) && !fantasma ) ) {
+      (cell(p).id != -1 && cell(p).owner != me() &&  
+        ( (magic_strength(me()) > 2*magic_strength(cell(p).owner) || (round() >= 100 && 2*magic_strength(me()) > magic_strength(cell(p).owner)) ) || 
+        (unit(cell(p).id).type == Ghost && unit(cell(p).id).rounds_pending < 10) ) && !fantasma) ) {
+
         if (simple) {
           move(wiz_id, front.mov);
           return;
@@ -126,6 +133,46 @@ struct PLAYER_NAME : public Player {
     //Si ha llegado auí significa que no a encontrado a por que ir en ese caso que vaya a lo mas cercano;
     // Pues hace lo mismo pero no comprueba si hay otro que va por lo mismo
     BFS(wiz_id, bfsqueue, fantasma, true);
+  }
+
+
+  bool BFSHuirV(int wiz_id) {
+    vector<vector<bool>> casVistas(board_rows(), vector<bool>(board_cols(), false));
+    queue<LibWiz> pendientes;
+    Pos p = unit(wiz_id).pos;
+    casVistas[p.i][p.j] = true;
+    pair<int,int> distini = distV(p);
+
+    for (int i = 0; i < int(wdirs.size()); ++i) {
+      Pos pm = p + wdirs[i];
+      if (celdaValida(pm) && !casVistas[pm.i][pm.j] && ((distV(pm).first > distini.first && distV(pm).second >= distini.second) || (distV(pm).first >= distini.first && distV(pm).second > distini.second))) {
+        pendientes.push(LibWiz{1, pm, wdirs[i], wiz_id});
+        casVistas[pm.i][pm.j] = true;
+      }
+    }
+
+    LibWiz front = {0, p, Up, wiz_id};
+    while (!pendientes.empty()) {
+      front = pendientes.front();
+      p = front.p;
+
+      for (int i = 0; i < int(wdirs.size()); ++i) {
+        Pos pm = p + wdirs[i];
+        if (celdaValida(pm) && !casVistas[pm.i][pm.j] && ((distV(pm).first > distini.first && distV(pm).second >= distini.second) || (distV(pm).first >= distini.first && distV(p).second > distini.second))) {
+          pendientes.push(LibWiz{front.dist + 1, pm, front.mov, wiz_id});
+          casVistas[pm.i][pm.j] = true;
+        }
+      }
+
+      if (true/*cell(p).id != -1 && cell(p).owner != me() && (unit(cell(p).id).type != Ghost || (unit(cell(p).id).type == Ghost && unit(cell(p).id).rounds_pending > front.dist))*/) {
+        move(front.id, front.mov);
+        cerr << "puta" << endl;
+        return true;
+
+      }
+      pendientes.pop();
+    }
+    return false;
   }
 
   void atacarcerca(Unit wiz) {
@@ -161,11 +208,14 @@ struct PLAYER_NAME : public Player {
     for (int k = 0; k < int(wids.size()); ++k) setWiz.insert(wids[k]);
     setWiz.insert(ghostid);  //meter al fantasma
     //Tirar hechizo
-    if (round() > 50 && unit(ghostid).rounds_pending == 0 && round() <= 150) spell(ghostid, asignar_grupos());
+    if (round() > 50 && unit(ghostid).rounds_pending == 0) spell(ghostid, asignar_grupos());
 
     for (int i = 0; i < int(wids.size()); ++i) {
       Unit wiz = unit(wids[i]);
+      bool movido = false;
       // Huir
+      //if (abs(posVi - wiz.pos.i) <= 5 && abs(posVj - wiz.pos.j) <= 5) movido = BFSHuirV(wiz.id);
+      
       if (abs(posVi - wiz.pos.i) <= 5 && abs(posVj - wiz.pos.j) <= 5) {
         if (abs(posVi - wiz.pos.i) > abs(posVj - wiz.pos.j)) {
           if (posVi > wiz.pos.i && celdaValida(wiz.pos.i - 1, wiz.pos.j))
@@ -180,12 +230,13 @@ struct PLAYER_NAME : public Player {
             move(wids[i], Right);
         }
       }
-
+      
       // Atacar si esta cerca
       atacarcerca(wiz);
 
+      
       // BFS
-      bfsqueue.push(wiz.id);
+      if (!movido)bfsqueue.push(wiz.id);
       while (!bfsqueue.empty()) {
         if (ghostid == bfsqueue.front()) BFS(bfsqueue.front(), bfsqueue, true, false);
         BFS(bfsqueue.front(), bfsqueue, false, false);
