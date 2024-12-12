@@ -4,7 +4,7 @@
  * Write the name of your player and save this file
  * with the same name and .cc extension.
  */
-#define PLAYER_NAME Zombie_v7
+#define PLAYER_NAME Zombie_v6
 
 struct PLAYER_NAME : public Player {
   /**
@@ -235,12 +235,12 @@ struct PLAYER_NAME : public Player {
 
     for (int i = 0; i < int(wids.size()); ++i) {
       Unit wiz = unit(wids[i]);
-      // Atacar si esta cerca
-      atacarcerca(wiz);
       // Huir
       bool movido = false;
       if (abs(posV.i - wiz.pos.i) <= distHuirV && abs(posV.j - wiz.pos.j) <= distHuirV) movido = BFSHuirV(wiz.id);
 
+      // Atacar si esta cerca
+      atacarcerca(wiz);
 
       // BFS
       if (!movido) bfsqueue.push(wiz.id);
