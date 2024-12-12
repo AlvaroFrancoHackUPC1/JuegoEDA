@@ -1,6 +1,6 @@
 // Guia de uso rapida:
 // Introducir nombre del bot, [nombre de otros bots], numero de rondas
-// El resultado sera vuestra tasa de victoria, puntuacion media y fuerza media
+// El resultado sera vuestra puntuacion media, fuerza media, 1er puesto y 2º puesto rate
 // Las puntuaciones de las partidas se guardan en el fichero resultado.txt
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,16 +57,35 @@ int win(int scores[4]) {
     return max;
 }
 
+// Función para determinar el segundo puesto.
+// Suponiendo que ya hemos hallado el primero, hallamos el segundo mayor score.
+int second_place_index(int scores[4], int first) {
+    int second = -1;
+    int second_score = -999999;
+    for (int i = 0; i < 4; i++) {
+        if (i == first) continue;
+        if (scores[i] > second_score) {
+            second_score = scores[i];
+            second = i;
+        }
+    }
+    return second;
+}
+
 int main(int argc, const char* argv[]) {
     char buff[256];
     float avg_score[4];
     float avg_strength[4];
     int scores[4];
     int strengths[4];
-    int wins[4];
-    for (int i = 0; i < 4; ++i) wins[i] = 0;
+    int first_places[4];
+    int second_places[4];
+
     for (int i = 0; i < 4; ++i) avg_score[i] = 0;
     for (int i = 0; i < 4; ++i) avg_strength[i] = 0;
+    for (int i = 0; i < 4; ++i) first_places[i] = 0;
+    for (int i = 0; i < 4; ++i) second_places[i] = 0;
+
     if (argc < 3 || argc > 6) Usage();
     int n = atoi(argv[argc - 1]);
     strcpy(buff, "./Game");
@@ -92,7 +111,12 @@ int main(int argc, const char* argv[]) {
     while ((r = waitpid(-1, NULL, WNOHANG)) >= 0) {
         if (r > 0) {
             parse_scores_and_strength(scores, strengths);
-            ++wins[win(scores)];
+            int f = win(scores);
+            first_places[f]++;
+
+            int s = second_place_index(scores, f);
+            second_places[s]++;
+
             for (int i = 0; i < 4; ++i) {
                 avg_score[i] += scores[i];
                 avg_strength[i] += strengths[i];
@@ -105,15 +129,24 @@ int main(int argc, const char* argv[]) {
             ++cont;
         }
     }
-    for (int i = 1; i < argc - 1; ++i) {
-        char win_rate_buff[256];
-        sprintf(win_rate_buff, "Win rate %s: %.2f\n", argv[i], 100.0f*wins[i - 1]/(float)n);
-        write(1, win_rate_buff, strlen(win_rate_buff));
 
+    for (int i = 1; i < argc - 1; ++i) {
         avg_strength[i - 1] /= (float)n;
         avg_score[i - 1] /= (float)n;
+        float first_rate = 100.0f * first_places[i - 1] / (float)n;
+        float second_rate = 100.0f * second_places[i - 1] / (float)n;
+
         char score_buff[256];
-        sprintf(score_buff, "Your avg scores is: %.2f, your avg strength is: %.2f\n", avg_score[i - 1], avg_strength[i - 1]);
+        sprintf(score_buff, "%s:\n", argv[i]);
+        write(1, score_buff, strlen(score_buff));
+
+        sprintf(score_buff, "  Avg score: %.2f, Avg strength: %.2f\n", avg_score[i - 1], avg_strength[i - 1]);
+        write(1, score_buff, strlen(score_buff));
+
+        sprintf(score_buff, "  1st place rate: %.2f%%\n", first_rate);
+        write(1, score_buff, strlen(score_buff));
+
+        sprintf(score_buff, "  2nd place rate: %.2f%%\n", second_rate);
         write(1, score_buff, strlen(score_buff));
     }
 }
