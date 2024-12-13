@@ -23,6 +23,7 @@
         "ostream": "cpp",
         "*.tcc": "cpp",
         "system_error": "cpp",
-        "tuple": "cpp"
+        "tuple": "cpp",
+        "chrono": "cpp"
     }
 }

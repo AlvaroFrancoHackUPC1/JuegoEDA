@@ -81,14 +81,14 @@ struct PLAYER_NAME : public Player {
     int dist;  // Distancia en recorrido entre wizard y libro
     Pos p;     // Posicion del libro
     Dir mov;   // Proximo movimiento del wizard hasta el libro
-    int id;    // id Wizard
+    vector<int> id;    // id Wizard
     int cas; // casillas pintadas nuevas en el camino
   };
 
 
   map<Pos, LibWiz> LPosD;
 
-   struct CompareLibWiz {
+  struct CompareLibWiz {
     bool operator()(const LibWiz& a, const LibWiz& b) const {
       if (a.dist != b.dist)
         return a.dist > b.dist; // primero min dist
@@ -98,7 +98,7 @@ struct PLAYER_NAME : public Player {
 
   // Busca el libro/enemigo que de su equipo este mas cerca
   // Si simple == true, va al mas cercano da igual que
-  void BFS(int wiz_id, queue<int>& bfsqueue, bool simple) {
+  void BFS(int wiz_id, queue<int>& bfsqueue, bool simple = false) {
     bool fantasma = (wiz_id == ghost(me()));
     vector<vector<bool>> casVistas(board_rows(), vector<bool>(board_cols(), false));
     priority_queue<LibWiz, vector<LibWiz>, CompareLibWiz> pendientes;
@@ -109,7 +109,7 @@ struct PLAYER_NAME : public Player {
     for (int i = 0; i < int(movement.size()); ++i) {
       Pos pm = p + movement[i];
       if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
-        pendientes.push(LibWiz{1, pm, movement[i], wiz_id, (cell(pm).owner != me() ? 1 : 0)});
+        pendientes.push(LibWiz{1, pm, movement[i], {wiz_id}, (cell(pm).owner != me() ? 1 : 0)});
         casVistas[pm.i][pm.j] = true;
       }
     }
@@ -121,7 +121,7 @@ struct PLAYER_NAME : public Player {
       for (int i = 0; i < int(movement.size()); ++i) {
         Pos pm = p + movement[i];
         if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
-          pendientes.push(LibWiz{front.dist + 1, pm, front.mov, wiz_id, front.cas + (cell(pm).owner != me() ? 1 : 0)});
+          pendientes.push(LibWiz{front.dist + 1, pm, front.mov, front.id, front.cas + (cell(pm).owner != me() ? 1 : 0)});
           casVistas[pm.i][pm.j] = true;
         }
       }
@@ -131,14 +131,15 @@ struct PLAYER_NAME : public Player {
       (cell(p).id != -1 && cell(p).owner != me() &&  
         ( (magic_strength(me()) > 2*magic_strength(cell(p).owner) || (round() >= 100 && 2*magic_strength(me()) > magic_strength(cell(p).owner)) ) || 
         (unit(cell(p).id).type == Ghost && unit(cell(p).id).rounds_pending < 10) ) && !fantasma) ) {
-        
         if (simple) {
           move(wiz_id, front.mov);
           return;
         }
-        if (LPosD.find(p) == LPosD.end() || LPosD[p].dist > front.dist) {
-          if (LPosD.find(p) != LPosD.end()) bfsqueue.push(LPosD[p].id);
-          LPosD[p] = front;
+        else if (LPosD.find(p) == LPosD.end() || LPosD[p].dist > front.dist) {
+          if (LPosD.find(p) != LPosD.end() && cell(p).book) 
+            for(int i = 0; i < front.id.size(); ++i) bfsqueue.push(LPosD[p].id[i]);
+          if (LPosD.find(p) != LPosD.end() && cell(p).id != -1 && LPosD[p].id.size() < 2) LPosD[p].id.push_back(wiz_id);
+          else LPosD[p] = front;
           return;
         }
       }
@@ -164,7 +165,7 @@ struct PLAYER_NAME : public Player {
       if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
         int dist_next = abs(pos_voldemort().i - pm.i) + abs(pos_voldemort().j - pm.j);
         if (dist_next > distact) {
-          pendientes.push(LibWiz{1, pm, movement[i], wiz_id, (cell(pm).owner != me() ? 1 : 0)});
+          pendientes.push(LibWiz{1, pm, movement[i], {wiz_id}, (cell(pm).owner != me() ? 1 : 0)});
           casVistas[pm.i][pm.j] = true;
         }
       }
@@ -181,7 +182,7 @@ struct PLAYER_NAME : public Player {
         if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
           int dist_next = abs(pos_voldemort().i - pm.i) + abs(pos_voldemort().j - pm.j);
           if (dist_next > distact) {
-            pendientes.push(LibWiz{front.dist + 1, pm, front.mov, wiz_id, front.cas + (cell(pm).owner != me() ? 1 : 0)});
+            pendientes.push(LibWiz{front.dist + 1, pm, front.mov, front.id, front.cas + (cell(pm).owner != me() ? 1 : 0)});
             casVistas[pm.i][pm.j] = true;
           }
         }
@@ -221,9 +222,11 @@ struct PLAYER_NAME : public Player {
     vector<int> wids = wizards(me());
     Pos posV = pos_voldemort();
     LPosD.clear();
+    bool movido = false;
     queue<int> bfsqueue;
     int ghostid = ghost(me());
-    bfsqueue.push(ghostid);
+    if (abs(posV.i - unit(ghostid).pos.i) <= distHuirV && abs(posV.j - unit(ghostid).pos.j) <= distHuirV) movido = BFSHuirV(ghostid);
+    if (!movido) bfsqueue.push(ghostid);
 
     // Inicializa un set con todos
     for (int k = 0; k < int(wids.size()); ++k) setWiz.insert(wids[k]);
@@ -233,17 +236,19 @@ struct PLAYER_NAME : public Player {
 
     for (int i = 0; i < int(wids.size()); ++i) {
       Unit wiz = unit(wids[i]);
+      movido = false;
+
       // Atacar si esta cerca
       atacarcerca(wiz);
+
       // Huir
-      bool movido = false;
       if (abs(posV.i - wiz.pos.i) <= distHuirV && abs(posV.j - wiz.pos.j) <= distHuirV) movido = BFSHuirV(wiz.id);
 
 
       // BFS
       if (!movido) bfsqueue.push(wiz.id);
       while (!bfsqueue.empty()) {
-        BFS(bfsqueue.front(), bfsqueue, false);
+        BFS(bfsqueue.front(), bfsqueue);
         bfsqueue.pop();
       }
     }
@@ -252,7 +257,11 @@ struct PLAYER_NAME : public Player {
     map<Pos, LibWiz>::iterator it = LPosD.begin();
     while (it != LPosD.end()) {
       //cerr << it->second.id << ' ' << it->second.dist << endl;
-      move(it->second.id, it->second.mov);
+      for(int i = 0; i < it->second.id.size(); ++i) {
+        move(it->second.id[i], it->second.mov);
+        cerr << it->second.id[i] << ", ";
+      }
+      cerr << "hacia " << it->second.p << endl;
       ++it;
     }
   }

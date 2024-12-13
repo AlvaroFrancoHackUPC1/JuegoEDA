@@ -82,7 +82,7 @@ struct PLAYER_NAME : public Player {
     Pos p;     // Posicion del libro
     Dir mov;   // Proximo movimiento del wizard hasta el libro
     int id;    // id Wizard
-    int puntos; // casillas pintadas nuevas en el camino
+    float puntos; // casillas pintadas nuevas en el camino
   };
 
 
@@ -96,16 +96,16 @@ struct PLAYER_NAME : public Player {
     }
   };
 
-  int puntosPos(Pos p) {
+  float puntosPos(Pos p) {
     int puntos = 0;
-    int factorStrenght = 0;  // or some other appropriate value
+    float factorStrenght = 0; 
     int totalMagicStrength = magic_strength(0) + magic_strength(1) + magic_strength(2) + magic_strength(3);
     if (totalMagicStrength != 0)
-      factorStrenght = float(magic_strength(me()) / totalMagicStrength * 10);
+      factorStrenght = 1 - float(magic_strength(me()) / totalMagicStrength);
 
+    float factorScore = 0;
     int totalScore = score(0) + score(1) + score(2) + score(3);
-    int factorScore = 0;
-    if (totalScore != 0) factorScore = float(score(me()) / totalScore * 10);
+    if (totalScore != 0) factorScore = 1 - float(score(me()) / totalScore);
 
     if (cell(p).book)
       puntos += book_magic_strength() * factorStrenght;  // Alto valor para libros
@@ -127,7 +127,7 @@ struct PLAYER_NAME : public Player {
     }
     return puntos;
   }
-
+ 
   // Busca el libro/enemigo que de su equipo este mas cerca
   // Si simple == true, va al mas cercano da igual que
   void BFS(int wiz_id, queue<int>& bfsqueue, bool simple) {
@@ -162,7 +162,7 @@ struct PLAYER_NAME : public Player {
       (cell(p).id != -1 && cell(p).owner == me() && unit(cell(p).id).is_in_conversion_process() && unit(cell(p).id).rounds_for_converting() > front.dist && !fantasma) ||
       (cell(p).id != -1 && cell(p).owner != me() &&  
         ( (magic_strength(me()) > 2*magic_strength(cell(p).owner) || (round() >= 100 && 2*magic_strength(me()) > magic_strength(cell(p).owner)) ) || 
-        (unit(cell(p).id).type == Ghost && unit(cell(p).id).rounds_pending < 10) ) && !fantasma) ) {
+        (unit(cell(p).id).type == Ghost && unit(cell(p).id).rounds_pending < 10) ) && !fantasma) ) { 
         
         if (simple) {
           move(wiz_id, front.mov);
@@ -196,7 +196,7 @@ struct PLAYER_NAME : public Player {
       if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
         int dist_next = abs(pos_voldemort().i - pm.i) + abs(pos_voldemort().j - pm.j);
         if (dist_next > distact) {
-          pendientes.push(LibWiz{1, pm, movement[i], wiz_id, (cell(pm).owner != me() ? 1 : 0)});
+          pendientes.push(LibWiz{1, pm, movement[i], wiz_id, puntosPos(pm)});
           casVistas[pm.i][pm.j] = true;
         }
       }
@@ -213,7 +213,7 @@ struct PLAYER_NAME : public Player {
         if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
           int dist_next = abs(pos_voldemort().i - pm.i) + abs(pos_voldemort().j - pm.j);
           if (dist_next > distact) {
-            pendientes.push(LibWiz{front.dist + 1, pm, front.mov, wiz_id, front.puntos + (cell(pm).owner != me() ? 1 : 0)});
+            pendientes.push(LibWiz{front.dist + 1, pm, front.mov, wiz_id, front.puntos + puntosPos(pm)});
             casVistas[pm.i][pm.j] = true;
           }
         }
@@ -293,43 +293,5 @@ struct PLAYER_NAME : public Player {
  * Do not modify the following line.
  */
 RegisterPlayer(PLAYER_NAME);
-
-   /*
-    vector<vector<bool>> casVistas(board_rows(), vector<bool>(board_cols(), false));
-    queue<LibWiz> pendientes;
-    Pos p = unit(wiz_id).pos;
-    casVistas[p.i][p.j] = true;
-    pair<int,int> distini = distV(p);
-
-    for (int i = 0; i < int(wdirs.size()); ++i) {
-      Pos pm = p + wdirs[i];
-      if (celdaValida(pm) && !casVistas[pm.i][pm.j] && ((distV(pm).first > distini.first && distV(pm).second >= distini.second) || (distV(pm).first >= distini.first && distV(pm).second > distini.second))) {
-        pendientes.push(LibWiz{1, pm, wdirs[i], wiz_id});
-        casVistas[pm.i][pm.j] = true;
-      }
-    }
-
-    LibWiz front = {0, p, Up, wiz_id};
-    while (!pendientes.empty()) {
-      front = pendientes.front();
-      p = front.p;
-
-      for (int i = 0; i < int(wdirs.size()); ++i) {
-        Pos pm = p + wdirs[i];
-        if (celdaValida(pm) && !casVistas[pm.i][pm.j] && ((distV(pm).first > distini.first && distV(pm).second >= distini.second) || (distV(pm).first >= distini.first && distV(p).second > distini.second))) {
-          pendientes.push(LibWiz{front.dist + 1, pm, front.mov, wiz_id});
-          casVistas[pm.i][pm.j] = true;
-        }
-      }
-
-      if (true) {
-        move(front.id, front.mov);
-        cerr << "puta" << endl;
-        return true;
-
-      }
-      pendientes.pop();
-    }
-    */
 
     
