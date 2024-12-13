@@ -4,7 +4,7 @@
  * Write the name of your player and save this file
  * with the same name and .cc extension.
  */
-#define PLAYER_NAME Zombie_v7
+#define PLAYER_NAME Zombie_v7_e
 
 struct PLAYER_NAME : public Player {
   /**
@@ -82,7 +82,7 @@ struct PLAYER_NAME : public Player {
     Pos p;     // Posicion del libro
     Dir mov;   // Proximo movimiento del wizard hasta el libro
     int id;    // id Wizard
-    int cas; // casillas pintadas nuevas en el camino
+    int puntos; // casillas pintadas nuevas en el camino
   };
 
 
@@ -92,9 +92,41 @@ struct PLAYER_NAME : public Player {
     bool operator()(const LibWiz& a, const LibWiz& b) const {
       if (a.dist != b.dist)
         return a.dist > b.dist; // primero min dist
-      return a.cas < b.cas;     // luego max cas si dist ==
+      return a.puntos < b.puntos;     // luego max cas si dist ==
     }
   };
+
+  int puntosPos(Pos p) {
+    int puntos = 0;
+    int factorStrenght = 0;  // or some other appropriate value
+    int totalMagicStrength = magic_strength(0) + magic_strength(1) + magic_strength(2) + magic_strength(3);
+    if (totalMagicStrength != 0)
+      factorStrenght = float(magic_strength(me()) / totalMagicStrength * 10);
+
+    int totalScore = score(0) + score(1) + score(2) + score(3);
+    int factorScore = 0;
+    if (totalScore != 0) factorScore = float(score(me()) / totalScore * 10);
+
+    if (cell(p).book)
+      puntos += book_magic_strength() * factorStrenght;  // Alto valor para libros
+
+    // Evaluar control de celdas
+    if (cell(p).owner != -1 && cell(p).owner != me())
+      puntos += points_per_owned_cell() * factorScore;  // Controlado por un enemigo
+
+    // Evaluar presencia de unidades enemigas
+    if (cell(p).id != -1) {
+      if (cell(p).owner != me()) {
+        Unit unit_info = unit(cell(p).id);
+        if (unit_info.type == Wizard && !unit_info.is_in_conversion_process()) {
+          int N = score(me()), M = score(cell(p).owner);
+          int probganar = (N == M ? 0.5 : (0.3 * (N + M) + 0.7 * N) / (N + M));
+          puntos += points_for_converting_wizard() * probganar;
+        }
+      }
+    }
+    return puntos;
+  }
 
   // Busca el libro/enemigo que de su equipo este mas cerca
   // Si simple == true, va al mas cercano da igual que
@@ -109,7 +141,7 @@ struct PLAYER_NAME : public Player {
     for (int i = 0; i < int(movement.size()); ++i) {
       Pos pm = p + movement[i];
       if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
-        pendientes.push(LibWiz{1, pm, movement[i], wiz_id, (cell(pm).owner != me() ? 1 : 0)});
+        pendientes.push(LibWiz{1, pm, movement[i], wiz_id, puntosPos(pm)});
         casVistas[pm.i][pm.j] = true;
       }
     }
@@ -121,7 +153,7 @@ struct PLAYER_NAME : public Player {
       for (int i = 0; i < int(movement.size()); ++i) {
         Pos pm = p + movement[i];
         if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
-          pendientes.push(LibWiz{front.dist + 1, pm, front.mov, wiz_id, front.cas + (cell(pm).owner != me() ? 1 : 0)});
+          pendientes.push(LibWiz{front.dist + 1, pm, front.mov, wiz_id, front.puntos + puntosPos(pm)});
           casVistas[pm.i][pm.j] = true;
         }
       }
@@ -181,7 +213,7 @@ struct PLAYER_NAME : public Player {
         if (celdaValida(pm) && !casVistas[pm.i][pm.j]) {
           int dist_next = abs(pos_voldemort().i - pm.i) + abs(pos_voldemort().j - pm.j);
           if (dist_next > distact) {
-            pendientes.push(LibWiz{front.dist + 1, pm, front.mov, wiz_id, front.cas + (cell(pm).owner != me() ? 1 : 0)});
+            pendientes.push(LibWiz{front.dist + 1, pm, front.mov, wiz_id, front.puntos + (cell(pm).owner != me() ? 1 : 0)});
             casVistas[pm.i][pm.j] = true;
           }
         }
